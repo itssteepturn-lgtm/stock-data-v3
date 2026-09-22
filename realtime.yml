@@ -1,0 +1,32 @@
+name: Realtime Ticker (2min)
+on:
+  schedule:
+    - cron: '*/2 1-7 * * 1-5'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: realtime
+  cancel-in-progress: true
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install
+        run: pip install -r requirements.txt
+      - name: Fetch Realtime
+        run: python scripts/fetch_realtime.py
+      - name: Push realtime
+        run: |
+          git config user.name "realtime-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add data/realtime.json data/latest.json data/meta.json || true
+          git diff --staged --quiet || git commit -m "realtime $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git fetch origin main
+          git merge origin/main -X ours --no-edit -m "merge realtime" || true
+          git push || true
